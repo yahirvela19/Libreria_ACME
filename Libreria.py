@@ -37,76 +37,144 @@ class BaseDeDatosLibros:
     """Maneja toda la interacción con la base de datos SQLite."""
  
     def __init__(self, nombre_archivo="libreria_acme.db"):
-        pass
+        self.nombre_archivo = nombre_archivo
+        self.conexion = None
+        self.cursor = None
+        self._conectar()
+        self.crear_tablas()
  
     def _conectar(self):
-        """Establece la conexión con el archivo SQLite."""
-        pass
+        try:
+            self.conexion = sqlite3.connect(self.nombre_archivo)
+            self.conexion.row_factory = sqlite3.Row
+            self.cursor = self.conexion.cursor()
+        except sqlite3.Error as e:
+            raise RuntimeError(f"No se pudo conectar a la base de datos: {e}")
  
     def crear_tablas(self):
-        """
-        Crea las tablas 'libros' y 'empleados' si no existen.
-        También inserta empleados y libros de muestra con INSERT OR IGNORE.
-        Tablas:
-            libros    (id, titulo, autor, genero, isbn, stock)
-            empleados (id, usuario, contrasena, nombre)
-        """
-        pass
+        try:
+            self.cursor.executescript('''
+                CREATE TABLE IF NOT EXISTS libros (
+                    id     INTEGER PRIMARY KEY AUTOINCREMENT,
+                    titulo TEXT    NOT NULL,
+                    autor  TEXT    NOT NULL,
+                    genero TEXT    NOT NULL,
+                    isbn   TEXT    UNIQUE NOT NULL,
+                    stock  INTEGER NOT NULL DEFAULT 1
+                );
+                CREATE TABLE IF NOT EXISTS empleados (
+                    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+                    usuario    TEXT UNIQUE NOT NULL,
+                    contrasena TEXT NOT NULL,
+                    nombre     TEXT NOT NULL
+                );
+            ''')
+            # Empleados por defecto
+            self.cursor.execute(
+                "INSERT OR IGNORE INTO empleados (usuario, contrasena, nombre) VALUES (?,?,?)",
+                ("admin", "admin123", "Administrador")
+            )
+            self.cursor.execute(
+                "INSERT OR IGNORE INTO empleados (usuario, contrasena, nombre) VALUES (?,?,?)",
+                ("empleado1", "12345", "Juan Perez")
+            )
+            # Libros de muestra
+            libros_muestra = [
+                ("Cien Años de Soledad", "Gabriel García Márquez", "Novela", "978-84-376-0494-7", 5),
+                ("El Quijote",           "Miguel de Cervantes",   "Clásico","978-84-670-5066-0", 3),
+                ("1984",                 "George Orwell",         "Distopía","978-84-233-4095-3", 4),
+                ("El Principito",        "Antoine de Saint-Exupéry","Infantil","978-84-261-4777-9", 7),
+                ("Sapiens",              "Yuval Noah Harari",     "Historia","978-84-9942-604-5", 2),
+            ]
+            self.cursor.executemany(
+                "INSERT OR IGNORE INTO libros (titulo, autor, genero, isbn, stock) VALUES (?,?,?,?,?)",
+                libros_muestra
+            )
+            self.conexion.commit()
+        except sqlite3.Error as e:
+            raise RuntimeError(f"Error al crear tablas: {e}")
+ 
+    # ── CRUD ──────────────────────────────────
  
     def agregar_libro(self, titulo, autor, genero, isbn, stock=1):
-        """
-        Inserta un nuevo libro en la base de datos.
-        Retorna: (True, mensaje) si tuvo éxito,
-                 (False, mensaje) si hubo error (ej. ISBN duplicado).
-        """
-        pass
+        try:
+            self.cursor.execute(
+                "INSERT INTO libros (titulo, autor, genero, isbn, stock) VALUES (?,?,?,?,?)",
+                (titulo, autor, genero, isbn, stock)
+            )
+            self.conexion.commit()
+            return True, "Libro agregado exitosamente."
+        except sqlite3.IntegrityError:
+            return False, "El ISBN ya existe en la base de datos."
+        except sqlite3.Error as e:
+            return False, f"Error al agregar libro: {e}"
  
     def editar_libro(self, libro_id, titulo, autor, genero, isbn, stock):
-        """
-        Actualiza todos los campos de un libro existente por su id.
-        Retorna: (True, mensaje) o (False, mensaje).
-        """
-        pass
+        try:
+            self.cursor.execute(
+                "UPDATE libros SET titulo=?, autor=?, genero=?, isbn=?, stock=? WHERE id=?",
+                (titulo, autor, genero, isbn, stock, libro_id)
+            )
+            self.conexion.commit()
+            return True, "Libro actualizado exitosamente."
+        except sqlite3.IntegrityError:
+            return False, "El ISBN ya pertenece a otro libro."
+        except sqlite3.Error as e:
+            return False, f"Error al editar libro: {e}"
  
     def borrar_libro(self, libro_id):
-        """
-        Elimina un libro por su id.
-        Retorna: (True, mensaje) o (False, mensaje).
-        """
-        pass
+        try:
+            self.cursor.execute("DELETE FROM libros WHERE id=?", (libro_id,))
+            self.conexion.commit()
+            if self.cursor.rowcount == 0:
+                return False, "Libro no encontrado."
+            return True, "Libro eliminado exitosamente."
+        except sqlite3.Error as e:
+            return False, f"Error al borrar libro: {e}"
  
     def buscar_libros(self, criterio, valor):
-        """
-        Busca libros usando LIKE en la columna indicada por 'criterio'.
-        criterio puede ser: 'titulo', 'autor', 'genero' o 'isbn'.
-        Retorna: lista de dicts con los libros encontrados.
-        """
-        pass
+        columnas = {"titulo": "titulo", "autor": "autor", "genero": "genero", "isbn": "isbn"}
+        col = columnas.get(criterio.lower())
+        if not col:
+            return []
+        try:
+            self.cursor.execute(
+                f"SELECT * FROM libros WHERE {col} LIKE ? ORDER BY titulo",
+                (f"%{valor}%",)
+            )
+            return [dict(row) for row in self.cursor.fetchall()]
+        except sqlite3.Error:
+            return []
  
     def obtener_todos_libros(self):
-        """
-        Retorna todos los libros ordenados por título.
-        Retorna: lista de dicts.
-        """
-        pass
+        try:
+            self.cursor.execute("SELECT * FROM libros ORDER BY titulo")
+            return [dict(row) for row in self.cursor.fetchall()]
+        except sqlite3.Error:
+            return []
  
     def obtener_libro_por_id(self, libro_id):
-        """
-        Busca y retorna un libro por su id.
-        Retorna: dict con el libro, o None si no existe.
-        """
-        pass
+        try:
+            self.cursor.execute("SELECT * FROM libros WHERE id=?", (libro_id,))
+            row = self.cursor.fetchone()
+            return dict(row) if row else None
+        except sqlite3.Error:
+            return None
  
     def verificar_empleado(self, usuario, contrasena):
-        """
-        Valida las credenciales de un empleado.
-        Retorna: nombre del empleado si son correctas, None si no.
-        """
-        pass
+        try:
+            self.cursor.execute(
+                "SELECT nombre FROM empleados WHERE usuario=? AND contrasena=?",
+                (usuario, contrasena)
+            )
+            row = self.cursor.fetchone()
+            return row["nombre"] if row else None
+        except sqlite3.Error:
+            return None
  
     def cerrar(self):
-        """Cierra la conexión con la base de datos."""
-        pass
+        if self.conexion:
+            self.conexion.close()
  
  
 # =============================================================
