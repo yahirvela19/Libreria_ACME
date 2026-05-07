@@ -37,144 +37,76 @@ class BaseDeDatosLibros:
     """Maneja toda la interacción con la base de datos SQLite."""
  
     def __init__(self, nombre_archivo="libreria_acme.db"):
-        self.nombre_archivo = nombre_archivo
-        self.conexion = None
-        self.cursor = None
-        self._conectar()
-        self.crear_tablas()
+        pass
  
     def _conectar(self):
-        try:
-            self.conexion = sqlite3.connect(self.nombre_archivo)
-            self.conexion.row_factory = sqlite3.Row
-            self.cursor = self.conexion.cursor()
-        except sqlite3.Error as e:
-            raise RuntimeError(f"No se pudo conectar a la base de datos: {e}")
+        """Establece la conexión con el archivo SQLite."""
+        pass
  
     def crear_tablas(self):
-        try:
-            self.cursor.executescript('''
-                CREATE TABLE IF NOT EXISTS libros (
-                    id     INTEGER PRIMARY KEY AUTOINCREMENT,
-                    titulo TEXT    NOT NULL,
-                    autor  TEXT    NOT NULL,
-                    genero TEXT    NOT NULL,
-                    isbn   TEXT    UNIQUE NOT NULL,
-                    stock  INTEGER NOT NULL DEFAULT 1
-                );
-                CREATE TABLE IF NOT EXISTS empleados (
-                    id         INTEGER PRIMARY KEY AUTOINCREMENT,
-                    usuario    TEXT UNIQUE NOT NULL,
-                    contrasena TEXT NOT NULL,
-                    nombre     TEXT NOT NULL
-                );
-            ''')
-            # Empleados por defecto
-            self.cursor.execute(
-                "INSERT OR IGNORE INTO empleados (usuario, contrasena, nombre) VALUES (?,?,?)",
-                ("admin", "admin123", "Administrador")
-            )
-            self.cursor.execute(
-                "INSERT OR IGNORE INTO empleados (usuario, contrasena, nombre) VALUES (?,?,?)",
-                ("empleado1", "12345", "Juan Perez")
-            )
-            # Libros de muestra
-            libros_muestra = [
-                ("Cien Años de Soledad", "Gabriel García Márquez", "Novela", "978-84-376-0494-7", 5),
-                ("El Quijote",           "Miguel de Cervantes",   "Clásico","978-84-670-5066-0", 3),
-                ("1984",                 "George Orwell",         "Distopía","978-84-233-4095-3", 4),
-                ("El Principito",        "Antoine de Saint-Exupéry","Infantil","978-84-261-4777-9", 7),
-                ("Sapiens",              "Yuval Noah Harari",     "Historia","978-84-9942-604-5", 2),
-            ]
-            self.cursor.executemany(
-                "INSERT OR IGNORE INTO libros (titulo, autor, genero, isbn, stock) VALUES (?,?,?,?,?)",
-                libros_muestra
-            )
-            self.conexion.commit()
-        except sqlite3.Error as e:
-            raise RuntimeError(f"Error al crear tablas: {e}")
- 
-    # ── CRUD ──────────────────────────────────
+        """
+        Crea las tablas 'libros' y 'empleados' si no existen.
+        También inserta empleados y libros de muestra con INSERT OR IGNORE.
+        Tablas:
+            libros    (id, titulo, autor, genero, isbn, stock)
+            empleados (id, usuario, contrasena, nombre)
+        """
+        pass
  
     def agregar_libro(self, titulo, autor, genero, isbn, stock=1):
-        try:
-            self.cursor.execute(
-                "INSERT INTO libros (titulo, autor, genero, isbn, stock) VALUES (?,?,?,?,?)",
-                (titulo, autor, genero, isbn, stock)
-            )
-            self.conexion.commit()
-            return True, "Libro agregado exitosamente."
-        except sqlite3.IntegrityError:
-            return False, "El ISBN ya existe en la base de datos."
-        except sqlite3.Error as e:
-            return False, f"Error al agregar libro: {e}"
+        """
+        Inserta un nuevo libro en la base de datos.
+        Retorna: (True, mensaje) si tuvo éxito,
+                 (False, mensaje) si hubo error (ej. ISBN duplicado).
+        """
+        pass
  
     def editar_libro(self, libro_id, titulo, autor, genero, isbn, stock):
-        try:
-            self.cursor.execute(
-                "UPDATE libros SET titulo=?, autor=?, genero=?, isbn=?, stock=? WHERE id=?",
-                (titulo, autor, genero, isbn, stock, libro_id)
-            )
-            self.conexion.commit()
-            return True, "Libro actualizado exitosamente."
-        except sqlite3.IntegrityError:
-            return False, "El ISBN ya pertenece a otro libro."
-        except sqlite3.Error as e:
-            return False, f"Error al editar libro: {e}"
+        """
+        Actualiza todos los campos de un libro existente por su id.
+        Retorna: (True, mensaje) o (False, mensaje).
+        """
+        pass
  
     def borrar_libro(self, libro_id):
-        try:
-            self.cursor.execute("DELETE FROM libros WHERE id=?", (libro_id,))
-            self.conexion.commit()
-            if self.cursor.rowcount == 0:
-                return False, "Libro no encontrado."
-            return True, "Libro eliminado exitosamente."
-        except sqlite3.Error as e:
-            return False, f"Error al borrar libro: {e}"
+        """
+        Elimina un libro por su id.
+        Retorna: (True, mensaje) o (False, mensaje).
+        """
+        pass
  
     def buscar_libros(self, criterio, valor):
-        columnas = {"titulo": "titulo", "autor": "autor", "genero": "genero", "isbn": "isbn"}
-        col = columnas.get(criterio.lower())
-        if not col:
-            return []
-        try:
-            self.cursor.execute(
-                f"SELECT * FROM libros WHERE {col} LIKE ? ORDER BY titulo",
-                (f"%{valor}%",)
-            )
-            return [dict(row) for row in self.cursor.fetchall()]
-        except sqlite3.Error:
-            return []
+        """
+        Busca libros usando LIKE en la columna indicada por 'criterio'.
+        criterio puede ser: 'titulo', 'autor', 'genero' o 'isbn'.
+        Retorna: lista de dicts con los libros encontrados.
+        """
+        pass
  
     def obtener_todos_libros(self):
-        try:
-            self.cursor.execute("SELECT * FROM libros ORDER BY titulo")
-            return [dict(row) for row in self.cursor.fetchall()]
-        except sqlite3.Error:
-            return []
+        """
+        Retorna todos los libros ordenados por título.
+        Retorna: lista de dicts.
+        """
+        pass
  
     def obtener_libro_por_id(self, libro_id):
-        try:
-            self.cursor.execute("SELECT * FROM libros WHERE id=?", (libro_id,))
-            row = self.cursor.fetchone()
-            return dict(row) if row else None
-        except sqlite3.Error:
-            return None
+        """
+        Busca y retorna un libro por su id.
+        Retorna: dict con el libro, o None si no existe.
+        """
+        pass
  
     def verificar_empleado(self, usuario, contrasena):
-        try:
-            self.cursor.execute(
-                "SELECT nombre FROM empleados WHERE usuario=? AND contrasena=?",
-                (usuario, contrasena)
-            )
-            row = self.cursor.fetchone()
-            return row["nombre"] if row else None
-        except sqlite3.Error:
-            return None
+        """
+        Valida las credenciales de un empleado.
+        Retorna: nombre del empleado si son correctas, None si no.
+        """
+        pass
  
     def cerrar(self):
-        if self.conexion:
-            self.conexion.close()
+        """Cierra la conexión con la base de datos."""
+        pass
  
  
 # =============================================================
@@ -415,50 +347,57 @@ class VentanaEmpleado(tk.Toplevel):
 # =============================================================
  
 class VentanaCliente(tk.Toplevel):
-    """
-    Vista de catálogo para clientes.
-    SOLO permite buscar libros — sin botones de modificación.
-    Muestra columnas: ID, Título, Autor, Género, ISBN (sin Stock).
-    """
- 
     def __init__(self, parent, db):
         super().__init__(parent)
         self.db = db
- 
-    def _centrar(self):
-        """Centra la ventana en la pantalla."""
-        pass
- 
+        self.title("Consulta de Libros - Cliente")
+        self.geometry("700x500")
+        self._construir_ui()
+        self._centrar()
+        self._cargar_todos()
+
     def _construir_ui(self):
-        """
-        Construye: encabezado de bienvenida, barra de búsqueda
-        con criterios, TablaLibros con mostrar_stock=False,
-        etiqueta de estado y botón Cerrar.
-        NO incluir ningún botón de Agregar, Editar ni Borrar.
-        """
-        pass
- 
-    def _cargar_todos(self):
-        """Carga y muestra todos los libros en la tabla."""
-        pass
- 
+        # Crear barra de búsqueda (criterio + campo + botón)
+        frame_busqueda = tk.Frame(self)
+        frame_busqueda.pack(pady=10)
+        
+        tk.Label(frame_busqueda, text="Buscar por:").pack(side="left")
+        self.criterio_var = tk.StringVar(value="titulo")
+        for c in ["titulo", "autor", "genero", "isbn"]:
+            tk.Radiobutton(frame_busqueda, text=c.capitalize(), variable=self.criterio_var, value=c).pack(side="left")
+            
+        self.ent_busqueda = tk.Entry(frame_busqueda)
+        self.ent_busqueda.pack(side="left", padx=5)
+        tk.Button(frame_busqueda, text="Buscar", command=self._buscar).pack(side="left")
+
+        # Tabla de libros (Miembro 2) sin mostrar stock
+        self.tabla = TablaLibros(self, mostrar_stock=False)
+        self.tabla.pack(fill="both", expand=True, padx=10, pady=10)
+
     def _buscar(self):
-        """
-        Lee criterio y valor, llama a db.buscar_libros()
-        y actualiza la tabla con los resultados.
-        """
-        pass
- 
- 
+        # Llama a buscar_libros y actualiza la tabla
+        valor = self.ent_busqueda.get()
+        libros = self.db.buscar_libros(self.criterio_var.get(), valor)
+        self.tabla.cargar(libros)
+
+    def _cargar_todos(self):
+        libros = self.db.obtener_todos_libros()
+        self.tabla.cargar(libros)
+        
+    def _centrar(self):
+        self.update_idletasks()
+        x = (self.winfo_screenwidth() // 2) - (self.winfo_width() // 2)
+        y = (self.winfo_screenheight() // 2) - (self.winfo_height() // 2)
+        self.geometry(f"+{x}+{y}")
+
 def main():
-    """
-    Punto de entrada de la aplicación.
-    Instancia VentanaPrincipal y llama a mainloop().
-    Envuelve en try/except para manejar errores fatales.
-    """
-    pass
- 
- 
+    try:
+        app = VentanaPrincipal() # Instancia ventana raíz
+        app.db.crear_tablas()    # Asegura que la BD exista
+        app.mainloop()
+    except Exception as e:
+        # Requerimiento: Manejar la excepción y continuar
+        print(f"Error detectado: {e}")
+
 if __name__ == "__main__":
     main()
- 
